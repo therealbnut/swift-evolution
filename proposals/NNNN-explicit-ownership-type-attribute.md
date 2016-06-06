@@ -1,4 +1,4 @@
-# Feature name
+# Explicit Ownership Type Attribute
 
 * Proposal: [SE-NNNN](https://github.com/therealbnut/swift-evolution/blob/therealbnut-explicit-ownership/proposals/NNNN-explicit-ownership-type-attribute.md)
 * Author(s): [Andrew Bennett](https://github.com/therealbnut)
