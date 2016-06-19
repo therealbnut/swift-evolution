@@ -74,13 +74,7 @@ class NewType {
 }
 ```
 
-An `@owns` attribute defines a list of types something can 'own'. If a type has an `@owns` attribute it must comply with these rules:
-
- * Ownership is inherited, a type can own anything the types it owns can.
- * All types it directly stores must also have an `@owns` attribute.
- * It must be able to own all reference types it directly stores.
- * It must be able to own all types owned by value types it directly stores.
-
+An `@owns` attribute defines a list of types something can 'own'.
 
 ## Detailed design
 
@@ -92,6 +86,15 @@ sufficient for someone who is *not* one of the authors to be able to
 reasonably implement the feature. -->
 
 Topographically this forms a directed acyclic graph, naturally avoiding retain cycles. The list of types in owns form the ordering of that graph.
+
+ If a type has an `@owns` attribute it must comply with these rules:
+
+ * Ownership is inherited, a type can own anything the types it owns can.
+ * All types it directly stores must also have an `@owns` attribute.
+ * It must be able to own all reference types it directly stores.
+ * It must be able to own all types owned by value types it directly stores.
+
+If a type does not have an `@owns` attribute it can own any type, whether they are annotated or not.
 
 ### Example Structures
 In these examples the notation `A → B` means that A can hold a reference to B.
@@ -122,14 +125,36 @@ Note: This is a "strongly connected component", this could allow retain cycles, 
 @owns(B, A) class B { ... }
 ```
 
-#### A→C
-Note: Value types are implicitly owned, so do not need to be allowed, however if they can store other types that must be allowed.
+#### A
+Note: Value types are implicitly owned, so can be ignored in the annotation.
 
 ```swift
-@owns(T) struct B<T> { ... }
-@owns(C) class A { let x: B<C> }
-@owns( ) class C { ... }
+@owns( ) class A { let x: B }
+struct B { ... }
 ```
+
+#### A -> T
+Note: Annotated value types must state if they can store a reference type.
+
+```swift
+@owns(T) struct A<T> { ... }
+```
+
+#### A→C
+If a reference stores another reference via a value-type it must be able to do so.
+
+```swift
+@owns(T) struct A<T> { ... }
+@owns( ) class B { ... }
+
+// Valid:
+         class C1 { let x: A<B> }
+@owns(B) class C2 { let x: A<B> }
+// Invalid:
+@owns( ) class C3 { let x: A<B> }
+```
+
+The case of `C1` can be avoided if a linter ensures that classes are annotated.
 
 ### Example Warnings and Errors
 Typically references that contradict the ownership rules will result in a compile-time error or a warning.
@@ -159,14 +184,24 @@ class C {
 ```
 
 #### Unannotated Type
-This would produce a warning, because the reference type C doesn't have any annotations.
+A warning is produced if an annotated type tries to store an un-annotated type.
 
 ```swift
 @owns(B) class A {
-Error: 'B' does not have any ownership annotations.
+Warning: 'B' does not have any ownership annotations.
   let x: B
 }
 class B {
+}
+```
+
+However, an un-annotated type is allowed to store an annotated type:
+
+```swift
+class A {
+  let x: B
+}
+@owns() class B {
 }
 ```
 
@@ -232,6 +267,8 @@ The Swift standard library should have ownership attributes applied. For example
 public protocol GeneratorType { ... }
 ```
 
+Otherwise, because of the inheritence rules, it should not impact existing code.
+
 ## Alternatives considered
 
 <!-- Describe alternative approaches to addressing the same problem, and
@@ -248,6 +285,13 @@ By using attribute `strong` on properties the topological ordering could be deri
 
 ### Ordering syntax like operator precedence
 This was considered, but it became very verbose and clumsy when applied to lots of different types.
+
+### Rust-style Ownership
+Rust-style ownership was considered, it allows a lot more to be done statically, and probably produces much more robust memory management. However the rust approach is conceptually complex, from the rust-lang documentation (https://doc.rust-lang.org/book/ownership.html):
+
+> However, this system does have a certain cost: learning curve. Many new users to Rust experience something we like to call ‘fighting with the borrow checker’ [...] more experienced Rust developers report that once they work with the rules of the ownership system for a period of time, they fight the borrow checker less and less.
+
+Swift aims to be approachable from the start, it aims to be a pleasure to work with, not a fight. Predictability and robustness are desirable because they make it easier to use Swift. This proposal is conceptually simple, and is also opt-in, it is straightforward and helpful when used, and doesn't hinder when not used.
 
 -------------------------------------------------------------------------------
 
