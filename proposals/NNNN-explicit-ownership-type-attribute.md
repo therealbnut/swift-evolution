@@ -58,6 +58,8 @@ class Parent {
 }
 ```
 
+This annotation will allow for better compile-time optimisations, but more importantly it can support safer code.
+
 ## Proposed solution
 
 <!-- Describe your solution to the problem. Provide examples and describe
@@ -95,6 +97,8 @@ Topographically this forms a directed acyclic graph, naturally avoiding retain c
  * It must be able to own all types owned by value types it directly stores.
 
 If a type does not have an `@owns` attribute it can own any type, whether they are annotated or not.
+
+If a private or internal type is used by a class it will need to be included in the ownership attribute, however it may be excluded from the public interface. In this case other public types that it in turn owns may be used in its place.
 
 ### Example Structures
 In these examples the notation `A → B` means that A can hold a reference to B.
@@ -250,7 +254,7 @@ Error: Allowing 'A' to own itself causes 'B' to have ambiguous ownership.
 
 ### Objective-C
 
-Classes defined in Objective-C could cause the checks to fail. Objective-C classes and protocols could get compatible annotations. Objective-C could also get similar verification, although similar to nullability annotations it's unlikely to be strongly enforced.
+Classes defined in Objective-C could cause a loss of robustness. This could be fixed if Objective-C classes and protocols have compatible annotations. Objective-C could also get ownership verification, although similar to nullability annotations it's unlikely to be strongly enforced.
 
 ## Impact on existing code
 
@@ -292,6 +296,10 @@ Rust-style ownership was considered, it allows a lot more to be done statically,
 > However, this system does have a certain cost: learning curve. Many new users to Rust experience something we like to call ‘fighting with the borrow checker’ [...] more experienced Rust developers report that once they work with the rules of the ownership system for a period of time, they fight the borrow checker less and less.
 
 Swift aims to be approachable from the start, it aims to be a pleasure to work with, not a fight. Predictability and robustness are desirable because they make it easier to use Swift. This proposal is conceptually simple, and is also opt-in, it is straightforward and helpful when used, and doesn't hinder when not used.
+
+Rust also restricts it so you can only have one owner. This allows for a lot of really good optimisations. It may complicate some data structures, or cause users to opt-out if it is incompatible with their code.
+
+Rust largely puts the burden on the programmer, the programmer must define at the callsite how ownership works. This proposal defines ownership on types, the burden is on the designer of the data structures.
 
 -------------------------------------------------------------------------------
 
